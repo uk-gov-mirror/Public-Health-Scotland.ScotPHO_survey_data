@@ -279,7 +279,7 @@ svy_results <- list.files(path = paste0(derived_data, "shes_indicator_files"), p
 
 # Read in the files and join them
 shes_results0 <- lapply(svy_results, arrow::read_parquet) %>% #read all the files in and store in a list
-  bind_rows() # Sept 2026: n=1,161,671
+  bind_rows() # Sept 2026: n=681,982
 
 
 # # BUT IF ALL DATA ARE IN THE GLOBAL ENVIRONMENT:
@@ -298,7 +298,7 @@ shes_results0 <- arrow::read_parquet(paste0(derived_data, "shes_results0.parquet
 # porftvg3 and porftvg3intake: porftvg3 stops at 2019-23, so use porftvg3intake after this (this is what SHeS team do)
 
 
-shes_results1 <- shes_results0 %>% #n=1,161,671
+shes_results1 <- shes_results0 %>% #n=681,982
   unique() %>% # get rid of duplicates. 
   mutate(indicator = ifelse(indicator=="porftvg3intake", "porftvg3", indicator)) %>% # harmonise the indicator name
   group_by(trend_axis, sex, code, ind_id, year, def_period, split_name, split_value) %>%
@@ -306,7 +306,7 @@ shes_results1 <- shes_results0 %>% #n=1,161,671
   ungroup() %>%
   filter(!(indicator=="ch_ghq" & count==2)) %>% # drop our derived data when there's cghq214 data available.
   mutate(indicator = ifelse(indicator=="ch_ghq", "cghq214", indicator)) %>% # harmonise the indicator name
-  select(-count) #n=1,161,445
+  select(-count) #n=681,756
 
 
 
@@ -339,21 +339,21 @@ drop_these_splits <- shes_results1 %>%
 
 
 # drop splits as identified above:
-shes_results1 <- shes_results1 %>% # 1,161,445 rows
+shes_results1 <- shes_results1 %>% # 681,756 rows
   mutate(area = substr(code, 1, 3)) %>%
   merge(y=drop_these_splits, by=c("area", "indicator", "split_name"), all.x=TRUE) %>%
-  filter(drop==0) %>% # now n=653,701
+  filter(drop==0) %>% # now n=589,139
   select(-c(area, areatype:drop)) 
 
 
 
 # drop splits by SIMD if they have data for fewer than three quintiles (+ total = 4)
-shes_results1 <- shes_results1 %>% # n=653,701
+shes_results1 <- shes_results1 %>% # n=589,139
   group_by(trend_axis, sex, indicator, ind_id, code, year, def_period, split_name) %>%
   mutate(count = n()) %>% # count all the values within each split, including the total
   ungroup() %>%
   filter(!(split_name=="Deprivation (SIMD)" & count<4)) %>% # case where e.g., and island board has 3 quintiles + a total
-  select(-count) # now 648,427
+  select(-count) # now 583,865
 
 # Suppress values where necessary:
 # SHeS suppress values where denominator (unweighted base) is <30
@@ -367,7 +367,7 @@ shes_results1 %>%
   filter(is.na(rate)) %>%
   select(indicator, code, trend_axis, split_value) %>%
   arrange(indicator) 
-# Sept 2026: ~54K values suppressed.
+# Sept 2026: ~45K values suppressed.
 
 # save intermediate df:
 arrow::write_parquet(shes_results1, paste0(derived_data, "shes_results1.parquet"))
